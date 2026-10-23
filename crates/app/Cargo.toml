@@ -1,0 +1,18 @@
+[package]
+name = "wax"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "A keyboard-first music player for the music you own"
+
+[dependencies]
+wax-core = { path = "../core" }
+# Scans the music folder.
+wax-scan = { path = "../scan" }
+serde.workspace = true
+serde_json.workspace = true
+eframe = { version = "0.36", default-features = false, features = ["glow", "wayland", "x11", "default_fonts"] }
+# Decodes cover thumbnails; also saves the debug screenshots.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+# Decodes and plays the music; symphonia covers MP3, AAC, ALAC, FLAC, Vorbis and WAV.
+rodio = { version = "0.23.0", default-features = false, features = ["playback", "symphonia-all"] }

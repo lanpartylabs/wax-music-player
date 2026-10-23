@@ -1,0 +1,46 @@
+# Settings of the wax importer. Copy this to ~/wax/librarian.toml (or to
+# $WAX_HOME/librarian.toml) and change what you need; a setting left out
+# keeps the value shown here.
+
+# The folder your music is in. Paths in the catalogue are relative to it.
+# Nothing under it is ever changed.
+root = "~/Music"
+
+# Only these folders under the root are read; all of it when the list is empty.
+include = []
+
+# Music on another machine: "user@host", whose folders listed in `include`
+# are mounted read-only under `root` over SSH (needs sshfs). Empty to read
+# `root` as it is.
+remote = ""
+remote_port = 22
+
+# Who runs this, for MusicBrainz, which asks every program to say how to
+# reach whoever runs it: your email address or web page.
+contact = ""
+
+# AI, off while these are empty. Models are asked in turn about what
+# MusicBrainz could not settle, a cheap one first.
+#   "openrouter:<model>"  paid per use, from OPENROUTER_API_KEY in secrets.env
+#   "claude:<model>"      the Claude Code installed here, on its owner's subscription
+judges = []
+# A model that accepts sound, as "openrouter:<model>", to listen to a clip of what is still unknown.
+listener = ""
+# The most one step may spend on paid models in one run, in US dollars;
+# "<step>_budget_usd" (judge_budget_usd, say) sets it for one step alone.
+budget_usd = 1.0
+# The most questions one run may ask of Claude Code.
+claude_questions = 150
+# Seconds of each song the listener hears.
+clip_seconds = 45
+
+# Whether Deezer may be asked, by artist and title, for the cover of a record
+# that has none anywhere else.
+deezer = false
+
+# What `python3 -m librarian nightly` does, in order. Add "hear" after
+# "gather" to look fingerprints up at AcoustID (needs fpcalc and ACOUSTID_KEY).
+stages = ["gather", "identify", "judge", "listen", "genre", "artwork", "ready", "report"]
+
+# Files read at once while gathering.
+jobs = 2

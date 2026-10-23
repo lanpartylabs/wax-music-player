@@ -1,0 +1,27 @@
+# Build output
+/target
+
+# Anything of a real music library: indexes, catalogues, caches, lists, covers
+*.jsonl.gz
+*.partial
+*.db
+*.db-journal
+*.db-wal
+*.tsv
+/importer/covers/
+/importer/ready/
+/importer/report/
+
+# The importer's own settings and keys, should they end up here
+librarian.toml
+secrets.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Editors and tools
+.nwave/
+.idea/
+.vscode/
+*.swp

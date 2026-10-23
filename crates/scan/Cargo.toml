@@ -1,0 +1,12 @@
+[package]
+name = "wax-scan"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Reads a music folder into a wax library index"
+
+[dependencies]
+wax-core = { path = "../core" }
+lofty = "0.25"
+rayon = "1"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp"] }
