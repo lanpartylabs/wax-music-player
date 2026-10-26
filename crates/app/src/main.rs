@@ -6,9 +6,12 @@ mod devtools;
 mod discard;
 mod draw;
 mod format;
+mod history;
 mod list;
 mod player;
 mod playlists;
+mod shuffle;
+mod state;
 mod theme;
 
 use std::error::Error;

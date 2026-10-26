@@ -47,6 +47,8 @@ pub struct Settings {
     pub volume: f32,
     /// Whether the sound is off; the slider keeps its place for when it is turned back on.
     pub mute: bool,
+    /// What the shuffle button shuffles, if anything.
+    pub shuffle: crate::shuffle::Mode,
 }
 
 impl Default for Settings {
@@ -60,6 +62,7 @@ impl Default for Settings {
             album_sort: AlbumOrder::default(),
             volume: 1.0,
             mute: false,
+            shuffle: crate::shuffle::Mode::Off,
         }
     }
 }

@@ -198,12 +198,9 @@ impl App {
     /// and stays where it is in its queue, found again by its path.
     pub(super) fn take_library(&mut self, index: &Path) -> Result<(), String> {
         let (lib, source) = open_index(index, None, &self.gone)?;
-        let path_of = |id: &u32| self.lib.tracks[*id as usize].path.clone();
-        let (playing, queue): (Option<String>, Vec<String>) = if self.playing_rest == self.rest_shown {
-            (self.playing.as_ref().map(path_of), self.queue.iter().map(path_of).collect())
-        } else {
-            (None, Vec::new())
-        };
+        let here = self.playing_rest == self.rest_shown;
+        let playing = self.playing.filter(|_| here).map(|id| self.lib.tracks[id as usize].path.clone());
+        let carried = here.then(|| self.queue.carry(&self.lib));
 
         self.info = album_info(&lib, source.ready);
         self.art = Art::new(source.art.clone(), &self.ctx);
@@ -218,10 +215,8 @@ impl App {
         }
         self.player.set_origin(self.origin());
 
-        let place: HashMap<&str, u32> = self.lib.tracks.iter().enumerate().map(|(i, track)| (track.path.as_str(), i as u32)).collect();
-        self.queue = queue.iter().filter_map(|path| place.get(path.as_str()).copied()).collect();
-        self.playing = playing.and_then(|path| place.get(path.as_str()).copied());
-        self.queue_at = self.playing.and_then(|id| self.queue.iter().position(|&queued| queued == id)).unwrap_or(0);
+        self.queue = carried.map_or_else(Default::default, |carried| carried.find(&self.lib));
+        self.playing = playing.and_then(|path| self.lib.tracks.iter().position(|track| track.path == path)).map(|i| i as u32);
 
         (self.albums_browser, self.artist_browser) = (Browser::default(), Browser::default());
         (self.artist_list, self.songs) = (List::default(), List::default());

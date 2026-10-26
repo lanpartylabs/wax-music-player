@@ -58,6 +58,7 @@ const HELP: &[(&str, &str)] = &[
     ("Ctrl-n", "new playlist"),
     ("F2", "sidebar: rename the playlist"),
     ("n  N", "next track, previous track"),
+    ("x  X", "shuffle songs, albums, artists, or not; the other way round"),
     ("[  ]", "back, forward ten seconds"),
     ("-  =", "volume down, up"),
     ("m", "sound off, on"),
@@ -107,8 +108,13 @@ fn top_bar(app: &mut App, p: &Painter, l: &Layout) {
     let mid = l.bar.center().y;
 
     let play = l.play.center();
-    draw::skip(p, pos2(play.x - 46.0, mid), 9.0, -1.0, theme::MUTED);
-    draw::skip(p, pos2(play.x + 46.0, mid), 9.0, 1.0, theme::MUTED);
+    draw::skip(p, l.previous.center(), 9.0, -1.0, theme::MUTED);
+    draw::skip(p, l.next.center(), 9.0, 1.0, theme::MUTED);
+    // Lit while on, with what it shuffles written under it.
+    let shuffling = app.settings.shuffle.word();
+    let shuffle = l.shuffle.center();
+    draw::shuffle(p, shuffle, if shuffling.is_empty() { theme::MUTED } else { theme::ACCENT });
+    draw::text(p, pos2(shuffle.x, shuffle.y + 11.0), Align2::CENTER_TOP, 56.0, shuffling, &app.fonts.label, theme::ACCENT);
     volume::paint(app, p, l.volume);
     if app.playing.is_some() && !app.paused {
         draw::pause_bars(p, play, 14.0, theme::TEXT);

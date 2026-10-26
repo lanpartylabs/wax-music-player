@@ -13,6 +13,8 @@ use crate::draw;
 
 /// The control across: the speaker, then the slider.
 pub(super) const WIDTH: f32 = 112.0;
+/// The shortest it is drawn in a narrow window, before it gives way.
+pub(super) const NARROWEST: f32 = 72.0;
 const SPEAKER: f32 = 22.0;
 /// How far a key press, or a notch of the wheel, moves the slider.
 const STEP: f32 = 0.05;

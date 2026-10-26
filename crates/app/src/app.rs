@@ -7,6 +7,7 @@ mod actions;
 mod carry;
 mod filters;
 mod paint;
+mod queue;
 mod scanning;
 mod scroll;
 mod settings;
@@ -25,9 +26,11 @@ use wax_core::{Column, Library, Query, View};
 use crate::art::Art;
 use crate::devtools::Script;
 use crate::discard;
+use crate::history::History;
 use crate::list::{Cells, Grid, List, Move};
 use crate::player::{self, Origin, Player, Request};
 use crate::playlists::{Places, Store};
+use crate::shuffle::{Dice, Rounds};
 use crate::theme::{self, Fonts};
 
 use self::actions::Actions;
@@ -274,6 +277,8 @@ struct Layout {
     sidebar: Rect,
     main: Rect,
     status: Rect,
+    /// The shuffle button, left of the others.
+    shuffle: Rect,
     play: Rect,
     previous: Rect,
     next: Rect,
@@ -300,12 +305,14 @@ impl Layout {
         let (filters, main) = if filter_bar { content.split_top_bottom_at_y(content.top() + filters::BAR) } else { (Rect::ZERO, content) };
 
         let mid = bar.center().y;
-        let play = Rect::from_center_size(pos2(screen.left() + 90.0, mid), vec2(36.0, 36.0));
-        let skip = |side: f32| Rect::from_center_size(pos2(play.center().x + side * 46.0, mid), vec2(30.0, 30.0));
-        let (previous, next) = (skip(-1.0), skip(1.0));
+        let play = Rect::from_center_size(pos2(screen.left() + 128.0, mid), vec2(36.0, 36.0));
+        let button = |side: f32| Rect::from_center_size(pos2(play.center().x + side * 44.0, mid), vec2(32.0, 32.0));
+        let (shuffle, previous, next) = (button(-2.0), button(-1.0), button(1.0));
         let search = Rect::from_min_max(pos2(screen.right() - 246.0, mid - 14.0), pos2(screen.right() - 16.0, mid + 14.0));
-        let volume = Rect::from_min_size(pos2(next.right() + 20.0, mid - 12.0), vec2(volume::WIDTH, 24.0));
-        let volume = if volume.right() + 24.0 > search.left() { Rect::ZERO } else { volume };
+        // The volume slider gets shorter in a narrow window, and gives way altogether once too short to set.
+        let room = search.left() - 24.0 - (next.right() + 20.0);
+        let volume = Rect::from_min_size(pos2(next.right() + 20.0, mid - 12.0), vec2(room.min(volume::WIDTH), 24.0));
+        let volume = if room < volume::NARROWEST { Rect::ZERO } else { volume };
 
         // Centred in the window when the buttons and search field leave room.
         let (left, right) = (next.right().max(volume.right()) + 24.0, search.left() - 24.0);
@@ -338,7 +345,7 @@ impl Layout {
             items.push(item(at));
             at += SIDEBAR_ROW;
         }
-        Layout { bar, sidebar, main, status, play, previous, next, volume, display, search, filters, items, headings }
+        Layout { bar, sidebar, main, status, shuffle, play, previous, next, volume, display, search, filters, items, headings }
     }
 }
 
@@ -705,8 +712,12 @@ pub struct App {
     /// The number the player gave the track now playing.
     serial: u64,
     /// The tracks that play one after another, and which of them is playing.
-    queue: Vec<u32>,
-    queue_at: usize,
+    queue: queue::Queue,
+    /// What has been played, and when; shuffle deals from it.
+    history: History,
+    /// Where each list's shuffle round stands.
+    rounds: Rounds,
+    dice: Dice,
     /// Where the last seek aimed and when, so that quick presses add up before the player has caught up.
     seek_target: Option<(Duration, Instant)>,
     help: bool,
@@ -794,8 +805,10 @@ impl App {
             status: player.status(),
             player,
             serial: 0,
-            queue: Vec::new(),
-            queue_at: 0,
+            queue: queue::Queue::default(),
+            history: History::load(),
+            rounds: Rounds::load(),
+            dice: Dice::new(),
             seek_target: None,
             help: false,
             query_time: Duration::ZERO,
@@ -1036,45 +1049,6 @@ impl App {
         self.anchor = 0;
     }
 
-    /// Plays a track of what is on screen; the tracks listed after it follow, but for those the collection lacks.
-    fn play(&mut self, track: u32) {
-        if self.lib.tracks[track as usize].missing {
-            self.notice = Some(("This song is not in the collection; it is listed to show the album is missing it".to_owned(), Instant::now()));
-            return;
-        }
-        let listed = match self.form() {
-            Form::Grid => self.albums_browser.detail.as_ref().map(|detail| detail.tracks.clone()),
-            Form::Artists => self.artist_browser.detail.as_ref().map(|detail| detail.tracks.clone()),
-            Form::Table => Some(self.result.rows.clone()),
-            Form::Settings => None,
-        };
-        self.queue = listed.unwrap_or_else(|| vec![track]);
-        let lib = &self.lib;
-        self.queue.retain(|&id| !lib.tracks[id as usize].missing);
-        self.playing_rest = self.rest_shown;
-        self.play_at(self.queue.iter().position(|&t| t == track).unwrap_or(0));
-    }
-
-    /// Plays the queue's track `at`, and has the one after it fetched meanwhile.
-    fn play_at(&mut self, at: usize) {
-        let Some(&track) = self.queue.get(at) else { return };
-        // The queue's tracks may be in the index that is not on screen.
-        let lib = match &self.shelved {
-            Some(other) if self.playing_rest != self.rest_shown => &other.lib,
-            _ => &self.lib,
-        };
-        let request = |id: u32| Request { path: lib.tracks[id as usize].path.clone(), size: lib.tracks[id as usize].size };
-        let (this, after) = (request(track), self.queue.get(at + 1).map(|&id| request(id)));
-        self.queue_at = at;
-        self.playing = Some(track);
-        self.paused = false;
-        self.seek_target = None;
-        self.serial = self.player.play(this);
-        if let Some(after) = after {
-            self.player.prefetch(after);
-        }
-    }
-
     /// The songs an action on the table applies to, in the order shown: those picked, or else the one under the cursor.
     fn chosen(&self) -> Vec<u32> {
         if self.picked.is_empty() {
@@ -1123,9 +1097,8 @@ impl App {
 
         // Tracks are known by their place in the index, which is about to change: carry what is playing over by path.
         let here = self.playing_rest == self.rest_shown;
-        let path_of = |id: u32| self.lib.tracks[id as usize].path.clone();
-        let (playing, queue): (Option<String>, Vec<String>) =
-            if here { (self.playing.map(path_of), self.queue.iter().map(|&id| path_of(id)).collect()) } else { (None, Vec::new()) };
+        let playing = self.playing.filter(|_| here).map(|id| self.lib.tracks[id as usize].path.clone());
+        let carried = here.then(|| self.queue.carry(&self.lib));
         let (section, cursor) = (self.label(self.section).to_owned(), self.songs.cursor);
 
         let mut tracks = std::mem::take(&mut self.lib.tracks);
@@ -1133,11 +1106,9 @@ impl App {
         self.lib = Library::new(tracks);
         self.info = album_info(&self.lib, self.source.ready);
         self.library_changed();
-        if here {
-            let place: HashMap<&str, u32> = self.lib.tracks.iter().enumerate().map(|(i, track)| (track.path.as_str(), i as u32)).collect();
-            self.queue = queue.iter().filter_map(|path| place.get(path.as_str()).copied()).collect();
-            self.playing = playing.and_then(|path| place.get(path.as_str()).copied());
-            self.queue_at = self.playing.and_then(|id| self.queue.iter().position(|&queued| queued == id)).unwrap_or(0);
+        if let Some(carried) = carried {
+            self.queue = carried.find(&self.lib);
+            self.playing = playing.and_then(|path| self.lib.tracks.iter().position(|track| track.path == path)).map(|i| i as u32);
         }
         if self.rest_shown {  // the states are numbered afresh too, and one may have emptied
             self.rest = rest_states(&self.lib);
@@ -1154,13 +1125,6 @@ impl App {
         self.anchor = self.songs.cursor;
         let songs = if paths.len() == 1 { "1 song".to_owned() } else { format!("{} songs", paths.len()) };
         self.notice = Some((format!("{songs} dropped from the library"), Instant::now()));
-    }
-
-    /// The next track of the queue (`by` 1) or the one before (-1).
-    fn skip(&mut self, by: isize) {
-        if self.playing.is_some() {
-            self.play_at(self.queue_at.saturating_add_signed(by));
-        }
     }
 
     /// Moves to a share of the way through the track playing.
@@ -1190,24 +1154,6 @@ impl App {
         let to = Duration::from_secs_f32((aimed.unwrap_or(self.status.position).as_secs_f32() + seconds).max(0.0));
         self.seek_target = Some((to, Instant::now()));
         self.player.seek(to);
-    }
-
-    /// Reads where the player stands; a track that has ended hands over to the next.
-    fn follow_player(&mut self) {
-        self.status = self.player.status();
-        if self.status.serial == self.serial && self.status.state == player::State::Ended && self.playing.is_some() {
-            if self.queue_at + 1 < self.queue.len() {
-                self.play_at(self.queue_at + 1);
-            } else {
-                self.playing = None;
-            }
-        }
-    }
-
-    fn play_song_cursor(&mut self) {
-        if let Some(&track) = self.result.rows.get(self.songs.cursor) {
-            self.play(track);
-        }
     }
 
     fn start_search(&mut self) {
@@ -1340,6 +1286,8 @@ impl App {
                 Key::Minus if !m.command => self.step_volume(-1.0),
                 Key::Equals | Key::Plus if !m.command => self.step_volume(1.0),
                 Key::M => self.toggle_mute(),
+                Key::X if m.shift => self.step_shuffle(-1),
+                Key::X => self.step_shuffle(1),
                 Key::Tab => self.focus = if self.focus == Focus::Main { Focus::Sidebar } else { Focus::Main },
                 Key::Escape if self.let_go_of_picks() => {}
                 Key::Escape if self.focus == Focus::Filters => self.leave_filters(),
@@ -1493,6 +1441,8 @@ impl App {
         }
         if l.play.contains(pos) {
             self.toggle_pause();
+        } else if l.shuffle.contains(pos) {
+            self.step_shuffle(1);
         } else if l.previous.contains(pos) {
             self.skip(-1);
         } else if l.next.contains(pos) {
@@ -1766,8 +1716,9 @@ mod tests {
         let layout = |width: f32| Layout::new(Rect::from_min_size(Pos2::ZERO, vec2(width, 700.0)), &[Section::Albums, Section::Settings], false);
         let wide = layout(1280.0);
         assert!(wide.volume.left() > wide.next.right() && wide.volume.right() < wide.display.left(), "between the buttons and the display");
+        assert!(wide.shuffle.right() < wide.previous.left() && wide.shuffle.left() > 0.0, "shuffle left of the others");
         let narrow = layout(560.0);
-        assert!(narrow.volume.width() > 0.0 && narrow.volume.right() < narrow.search.left(), "kept while the search field leaves room");
+        assert!(narrow.volume.width() >= volume::NARROWEST && narrow.volume.right() < narrow.search.left(), "kept, shorter, while the search field leaves room");
         assert_eq!(narrow.display, Rect::ZERO, "the display gives way first");
         assert_eq!(layout(400.0).volume, Rect::ZERO);
     }

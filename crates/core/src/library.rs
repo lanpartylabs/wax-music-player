@@ -256,6 +256,12 @@ impl Library {
         self.tracks.is_empty()
     }
 
+    /// Where a track stands in artist / album / disc / track order: an album's tracks sorted by it play as the
+    /// album runs.
+    pub fn album_place(&self, track: u32) -> u32 {
+        self.natural[track as usize]
+    }
+
     /// Runs a query and returns rows sorted by `sort`. Within equal sort keys
     /// rows always stay in album order, and untagged values always come last,
     /// whichever direction is chosen.

@@ -23,6 +23,10 @@ and drawn covers, from [`tools/make_demo_library.py`](tools/make_demo_library.py
 - **Liked songs and playlists.** Like a song with its heart or Shift-L. Pick
   several songs (click, Shift-click, Ctrl-click, Shift-arrows), then drag them
   onto a playlist in the sidebar, or onto "New Playlist" to make one.
+- **Shuffle that is random.** Shuffle songs, whole albums, or an artist at a
+  time, from whatever is on screen: the library as filtered, an album, a
+  playlist. Nothing is favoured for being new or often played, and each list
+  plays every song once before any comes round again, even across restarts.
 - **Keyboard first.** Everything has a key, and `?` lists them. The mouse
   works too.
 - **Stays up to date.** wax looks through your music folder each time it
@@ -86,6 +90,7 @@ and falls back to a built-in font.
 | `F2` | rename the playlist (in the sidebar) |
 | `Delete` | hide the picked songs from the library; in a playlist, take them out |
 | `n` `N` | next track, previous track |
+| `x` `X` | shuffle songs, albums, artists, or not; or the button left of the others |
 | `[` `]` | back, forward ten seconds |
 | `-` `=` | volume down, up; or the slider beside the buttons |
 | `m` | sound off, on |
@@ -101,6 +106,7 @@ and falls back to a built-in font.
 | The list of your music, and cover thumbnails | `~/.local/share/wax/folder/` |
 | Liked songs and playlists | `~/.local/state/wax/playlists.json` |
 | Songs hidden with Delete | `~/.local/state/wax/discarded.txt` |
+| What has played, and where each shuffle stands | `~/.local/state/wax/played.jsonl`, `shuffle.json` |
 | Songs fetched from a server ([importer](importer/README.md#on-a-server)) | `~/.cache/wax/audio/`, at most 4 GB |
 
 Nothing else is written, and nothing is sent anywhere. Deleting a song in wax

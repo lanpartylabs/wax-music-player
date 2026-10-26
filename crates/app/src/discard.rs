@@ -11,11 +11,7 @@ use std::sync::{Arc, Mutex};
 
 /// The list kept on this machine: one path of the index a line.
 fn file() -> PathBuf {
-    let state = std::env::var_os("XDG_STATE_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/state")))
-        .unwrap_or_default();
-    state.join("wax/discarded.txt")
+    crate::state::file("discarded.txt")
 }
 
 /// Everything dropped so far.

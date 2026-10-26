@@ -118,6 +118,26 @@ pub fn speaker(p: &Painter, center: Pos2, waves: Option<u8>, color: Color32) {
     }
 }
 
+/// Two arrows crossing on their way right, about 20 across: the shuffle button.
+pub fn shuffle(p: &Painter, center: Pos2, color: Color32) {
+    let stroke = Stroke::new(1.5, color);
+    for side in [-1.0f32, 1.0] {
+        // Level, then over to the other side along a smooth step, then level again into the head.
+        let path = (0..=16)
+            .map(|i| {
+                let x = -9.0 + i as f32;
+                let t = ((x + 4.5) / 8.0).clamp(0.0, 1.0);
+                let y = side * 4.5 * (1.0 - 2.0 * t * t * (3.0 - 2.0 * t));
+                pos2(center.x + x, center.y + y)
+            })
+            .collect();
+        p.add(Shape::line(path, stroke));
+        let tip = pos2(center.x + 10.0, center.y - side * 4.5);
+        let head = vec![pos2(tip.x - 4.0, tip.y - 3.5), tip, pos2(tip.x - 4.0, tip.y + 3.5)];
+        p.add(Shape::convex_polygon(head, color, Stroke::NONE));
+    }
+}
+
 pub fn magnifier(p: &Painter, center: Pos2, color: Color32) {
     let stroke = Stroke::new(1.5, color);
     let lens = pos2(center.x - 1.5, center.y - 1.5);
