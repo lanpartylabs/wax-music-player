@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=wax
+GenericName=Music Player
+Comment=A keyboard-first music player for the music you own
+Exec=wax
+Icon=wax
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+Keywords=music;player;audio;library;
+StartupWMClass=wax

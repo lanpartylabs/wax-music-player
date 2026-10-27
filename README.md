@@ -1,4 +1,9 @@
-# wax
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo/wax-dark.svg">
+    <img src="docs/logo/wax.svg" alt="wax" width="200">
+  </picture>
+</h1>
 
 A keyboard-first music player for the music you own. Point it at a folder,
 and it lists your albums, artists and songs, finds anything as you type, and
@@ -67,6 +72,15 @@ python3 tools/make_demo_library.py ~/wax-demo
 
 wax draws its text in Inter, Fira Sans or Noto Sans, whichever is installed,
 and falls back to a built-in font.
+
+To start it from your desktop's applications, with its icon, put it on your
+path and add its desktop entry and icons:
+
+```sh
+install -Dm755 target/release/wax ~/.local/bin/wax
+install -Dm644 packaging/linux/wax.desktop ~/.local/share/applications/wax.desktop
+cp -r packaging/linux/icons ~/.local/share/
+```
 
 ## Keys
 
@@ -152,8 +166,9 @@ How to set it up, what it asks of which service, and what AI costs:
 | `crates/core` | the library model: the index format, search, sorting and filters |
 | `crates/scan` | reading a music folder into an index; also the `wax-scan` command |
 | `importer/` | the importer, in Python |
-| `tools/` | the made-up demo library |
-| `docs/` | screenshots |
+| `tools/` | the made-up demo library, and the logo and icon |
+| `packaging/linux` | the desktop entry and icons |
+| `docs/` | screenshots and the logo |
 
 ## Contributing
 

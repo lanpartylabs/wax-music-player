@@ -72,6 +72,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         viewport: egui::ViewportBuilder::default()
             .with_title("wax")
             .with_app_id("wax")
+            .with_icon(icon())
             .with_inner_size([1280.0, 800.0])
             .with_min_inner_size([560.0, 320.0]),
         ..Default::default()
@@ -79,4 +80,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     let start = Start { lib, source, settings, gone, search: search.join(" "), started, welcome };
     eframe::run_native("wax", options, Box::new(move |cc| Ok(Box::new(app::App::new(cc, start)))))?;
     Ok(())
+}
+
+/// The icon on the window, where the desktop takes it from there: X11, Windows, macOS. Wayland desktops
+/// find it by the app id instead, in the desktop entry and icons under packaging/linux.
+fn icon() -> egui::IconData {
+    eframe::icon_data::from_png_bytes(include_bytes!("../assets/icon.png")).unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_window_icon_is_a_square_picture() {
+        let icon = super::icon();
+        assert_eq!((icon.width, icon.height), (256, 256));
+        assert_eq!(icon.rgba.len(), 256 * 256 * 4);
+    }
 }
